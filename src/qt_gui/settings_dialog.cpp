@@ -10,7 +10,10 @@
 #include <QDirIterator>
 #include <QFileDialog>
 #include <QHoverEvent>
+#include <QLabel>
 #include <QMessageBox>
+#include <QRegularExpression>
+#include <RtMidi.h>
 #include <SDL3/SDL.h>
 #include <fmt/format.h>
 
@@ -36,6 +39,12 @@
 #endif
 
 // extern std::unique_ptr<Vulkan::Presenter> presenter;
+
+// Removes the numbers Windows gives devices connected more than once, as in "2- TD-1" and
+// "IN 1 (2- BEHRINGER UMC 204HD 192k)", which change when a device is plugged in again.
+static QString RemoveDeviceInstanceNumbers(QString name) {
+    return name.replace(QRegularExpression("(^midi:|^|\\()\\d+- "), "\\1");
+}
 
 QStringList languageNames = {"Arabic",
                              "Czech",
@@ -235,6 +244,8 @@ SettingsDialog::SettingsDialog(std::shared_ptr<gui_settings> gui_settings,
     }
 
     SDL_QuitSubSystem(SDL_INIT_CAMERA);
+
+    CreatePlayerWidgets();
 
     if (!SDL_Init(SDL_INIT_AUDIO)) {
         LOG_ERROR(Config, "SDL_INIT_AUDIO failed: {}", SDL_GetError());
@@ -559,6 +570,8 @@ SettingsDialog::SettingsDialog(std::shared_ptr<gui_settings> gui_settings,
         ui->motionControlsCheckBox->installEventFilter(this);
         ui->micComboBox->installEventFilter(this);
         ui->usbComboBox->installEventFilter(this);
+        ui->playersGroupBox->installEventFilter(this);
+        ui->midiDrumsGroupBox->installEventFilter(this);
 
         // Graphics
         ui->graphicsAdapterGroupBox->installEventFilter(this);
@@ -797,6 +810,26 @@ void SettingsDialog::LoadValuesFromConfig() {
     ui->backgroundControllerCheckBox->setChecked(EmulatorSettings.IsBackgroundControllerInput());
     ui->usbComboBox->setCurrentIndex(EmulatorSettings.GetUsbDeviceBackend());
     ui->cameraComboBox->setCurrentIndex(EmulatorSettings.GetCameraId() + 1);
+
+    const auto players = EmulatorSettings.GetPlayers();
+    for (size_t i = 0; i < player_widgets.size(); i++) {
+        const PlayerInput input = i < players.size() ? players[i] : PlayerInput{};
+        const auto& widgets = player_widgets[i];
+        SelectItem(widgets.controller, QString::fromStdString(input.controller));
+        SelectItem(widgets.instrument, input.instrument);
+        UpdateInstrumentDevices(i);
+        SelectItem(widgets.instrument_device,
+                   RemoveDeviceInstanceNumbers(QString::fromStdString(input.instrument_device)));
+    }
+    const auto mics = EmulatorSettings.GetMics();
+    for (size_t i = 0; i < mic_boxes.size(); i++) {
+        SelectItem(mic_boxes[i], RemoveDeviceInstanceNumbers(
+                                     QString::fromStdString(i < mics.size() ? mics[i] : "")));
+    }
+    ui->midiDrumsPulseSpinBox->setValue(EmulatorSettings.GetMidiDrumsPulseMs());
+    ui->midiDrumsMinVelocitySpinBox->setValue(EmulatorSettings.GetMidiDrumsMinVelocity());
+    ui->midiDrumsOverridesLineEdit->setText(
+        QString::fromStdString(EmulatorSettings.GetMidiDrumsNoteOverrides()));
 
     ui->hideCursorComboBox->setCurrentIndex(EmulatorSettings.GetCursorState());
     OnCursorStateChanged(EmulatorSettings.GetCursorState());
@@ -1106,6 +1139,10 @@ void SettingsDialog::updateNoteTextEdit(const QString& elementName) {
         text = tr("Enable Motion Controls:\\nWhen enabled it will use the controller's motion control if supported.");
     } else if (elementName == "usbComboBox") {
         text = tr("USB Device:\\nReal USB Device: Use a real USB Device attached to the system.\\nSkylander Portal: Emulate a Skylander Portal of Power.\\nInfinity Base: Emulate a Disney Infinity Base.\\nDimensions Toypad: Emulate a Lego Dimensions Toypad.");
+    } else if (elementName == "playersGroupBox") {
+        text = tr("Players:\\nController: The controller each player uses, or Automatic to assign them in connection order.\\nInstrument: What the player is to the game. Guitars and drums are read from their instrument device, or from the controller itself, such as Xbox 360 instruments.\\nInstrument Device: A MIDI drum kit, a USB instrument or an instrument dongle (PS3, Wii, PS4, PS5, Santroller). The controller then only navigates menus. Drums read from the controller need the Rock Band or Guitar Hero layout of the kit.\\nMic 1, Mic 2, Mic 3: The microphones the game uses for singing and harmonies, whoever sings. They are handed to the players in order, those without an instrument first. Like on the console, each microphone needs its own user, so when there are more microphones than players, users without a controller are logged in to hold them.");
+    } else if (elementName == "midiDrumsGroupBox") {
+        text = tr("MIDI Drums:\\nHow MIDI drum kits are played, using the Rock Band 3 MIDI Pro Adapter note layout.\\nHit Duration: How long each hit is held so the game can register it.\\nMinimum Velocity: Softer hits are ignored.\\nNote Overrides: Comma separated note=Piece entries, where Piece is Kick, Snare, HiTom, LowTom, FloorTom, Hihat, Ride or Crash.");
     }
 
     // Experimental
@@ -1220,6 +1257,24 @@ void SettingsDialog::UpdateSettings(bool is_specific) {
     EmulatorSettings.SetCursorHideTimeout(ui->idleTimeoutSpinBox->value(), is_specific);
     EmulatorSettings.SetUsbDeviceBackend(ui->usbComboBox->currentIndex(), is_specific);
     EmulatorSettings.SetCameraId(ui->cameraComboBox->currentIndex() - 1, is_specific);
+    std::vector<PlayerInput> players;
+    for (const auto& widgets : player_widgets) {
+        players.push_back({
+            .controller = widgets.controller->currentData().toString().toStdString(),
+            .instrument = widgets.instrument->currentData().toInt(),
+            .instrument_device = widgets.instrument_device->currentData().toString().toStdString(),
+        });
+    }
+    EmulatorSettings.SetPlayers(players, is_specific);
+    std::vector<std::string> mics;
+    for (const auto* box : mic_boxes) {
+        mics.push_back(box->currentData().toString().toStdString());
+    }
+    EmulatorSettings.SetMics(mics, is_specific);
+    EmulatorSettings.SetMidiDrumsPulseMs(ui->midiDrumsPulseSpinBox->value(), is_specific);
+    EmulatorSettings.SetMidiDrumsMinVelocity(ui->midiDrumsMinVelocitySpinBox->value(), is_specific);
+    EmulatorSettings.SetMidiDrumsNoteOverrides(ui->midiDrumsOverridesLineEdit->text().toStdString(),
+                                               is_specific);
 
     // Network tab
     EmulatorSettings.SetConnectedToNetwork(ui->networkConnectedCheckBox->isChecked(), is_specific);
@@ -1552,4 +1607,167 @@ void SettingsDialog::GetPhysicalDevices() {
     std::string gpuName = GetAppleGpuName();
     m_physical_devices.push_back(QString::fromStdString(gpuName));
 #endif
+}
+
+// USB instruments and instrument dongles the emulator reads, see the PlasticBand documentation.
+constexpr int GuitarInstrument = 1;
+constexpr int DrumInstrument = 2;
+struct HidInstrument {
+    u16 vendor_id;
+    u16 product_id;
+    // Matches any release when zero.
+    u16 release;
+    int instrument;
+    const char* name;
+};
+constexpr std::array<HidInstrument, 27> HidInstruments = {{
+    {0x0738, 0x8261, 0, GuitarInstrument, "Mad Catz Stratocaster (PS4)"},
+    {0x0E6F, 0x0173, 0, GuitarInstrument, "PDP Jaguar (PS4)"},
+    {0x0E6F, 0x024A, 0, GuitarInstrument, "PDP Riffmaster (PS4)"},
+    {0x3651, 0x1500, 0, GuitarInstrument, "CRKD Gibson SG (PS4)"},
+    {0x3651, 0x5500, 0, GuitarInstrument, "CRKD Gibson SG (PS4)"},
+    {0x0738, 0x8262, 0, DrumInstrument, "Mad Catz Drums (PS4)"},
+    {0x0E6F, 0x0174, 0, DrumInstrument, "PDP Drums (PS4)"},
+    {0x0E6F, 0x0249, 0, GuitarInstrument, "PDP Riffmaster (PS5)"},
+    {0x3651, 0x1600, 0, GuitarInstrument, "CRKD Gibson SG (PS5)"},
+    {0x3651, 0x5600, 0, GuitarInstrument, "CRKD Gibson SG (PS5)"},
+    {0x12BA, 0x0200, 0, GuitarInstrument, "Rock Band Guitar (PS3)"},
+    {0x1BAD, 0x0004, 0, GuitarInstrument, "Rock Band Guitar (Wii)"},
+    {0x1BAD, 0x3010, 0, GuitarInstrument, "Rock Band Guitar (Wii)"},
+    {0x12BA, 0x0210, 0, DrumInstrument, "Rock Band Drums (PS3)"},
+    {0x1BAD, 0x0005, 0, DrumInstrument, "Rock Band Drums (Wii)"},
+    {0x1BAD, 0x3110, 0, DrumInstrument, "Rock Band Drums (Wii)"},
+    {0x12BA, 0x0100, 0, GuitarInstrument, "Guitar Hero Guitar (PS3)"},
+    {0x1430, 0x474C, 0, GuitarInstrument, "Guitar Hero World Tour Guitar (PC)"},
+    {0x12BA, 0x0120, 0, DrumInstrument, "Guitar Hero Drums (PS3)"},
+    {0x1209, 0x2882, 0x0400, GuitarInstrument, "Santroller Rock Band Guitar"},
+    {0x1209, 0x2885, 0x0400, GuitarInstrument, "Santroller Rock Band Guitar"},
+    {0x1209, 0x2882, 0x0300, GuitarInstrument, "Santroller Guitar Hero Guitar"},
+    {0x1209, 0x2885, 0x0300, GuitarInstrument, "Santroller Guitar Hero Guitar"},
+    {0x1209, 0x2882, 0x0600, DrumInstrument, "Santroller Rock Band Drums"},
+    {0x1209, 0x2885, 0x0600, DrumInstrument, "Santroller Rock Band Drums"},
+    {0x1209, 0x2882, 0x0500, DrumInstrument, "Santroller Guitar Hero Drums"},
+    {0x1209, 0x2885, 0x0500, DrumInstrument, "Santroller Guitar Hero Drums"},
+}};
+
+void SettingsDialog::CreatePlayerWidgets() {
+    QList<QPair<QString, QString>> controllers{{tr("Automatic"), QString()}};
+    QList<QPair<QString, QString>> mics{{tr("None"), QString()},
+                                        {tr("Default Device"), "Default Device"}};
+    guitar_devices = {{tr("This Controller"), QString()}};
+    drum_devices = {{tr("This Controller (Rock Band)"), QString()},
+                    {tr("This Controller (Guitar Hero)"), "gh"}};
+
+    if (SDL_InitSubSystem(SDL_INIT_GAMEPAD | SDL_INIT_AUDIO)) {
+        int count = 0;
+        if (SDL_JoystickID* gamepads = SDL_GetGamepads(&count)) {
+            for (int i = 0; i < count; i++) {
+                const char* name = SDL_GetGamepadNameForID(gamepads[i]);
+                if (const char* path = SDL_GetGamepadPathForID(gamepads[i])) {
+                    controllers.append({QString("%1 (%2)").arg(name ? name : "", path), path});
+                }
+            }
+            SDL_free(gamepads);
+        }
+        if (SDL_AudioDeviceID* devices = SDL_GetAudioRecordingDevices(&count)) {
+            for (int i = 0; i < count; i++) {
+                if (const char* name = SDL_GetAudioDeviceName(devices[i])) {
+                    mics.append({QString(name), RemoveDeviceInstanceNumbers(name)});
+                }
+            }
+            SDL_free(devices);
+        }
+        if (SDL_hid_device_info* devices = SDL_hid_enumerate(0, 0)) {
+            for (const SDL_hid_device_info* device = devices; device; device = device->next) {
+                for (const auto& instrument : HidInstruments) {
+                    // Only the joystick or gamepad interface carries the instrument reports.
+                    if (device->vendor_id != instrument.vendor_id ||
+                        device->product_id != instrument.product_id ||
+                        (instrument.release != 0 && device->release_number != instrument.release) ||
+                        device->usage_page != 1 || (device->usage != 4 && device->usage != 5)) {
+                        continue;
+                    }
+                    auto& list =
+                        instrument.instrument == GuitarInstrument ? guitar_devices : drum_devices;
+                    list.append({instrument.name, QString("hid:%1").arg(device->path)});
+                }
+            }
+            SDL_hid_free_enumeration(devices);
+        }
+        SDL_QuitSubSystem(SDL_INIT_GAMEPAD | SDL_INIT_AUDIO);
+    }
+
+    // The stored MIDI port name drops the port number that some MIDI backends append, since the
+    // emulator matches it as a substring and the number can change between sessions.
+    try {
+        RtMidiIn midi_in;
+        for (unsigned int i = 0; i < midi_in.getPortCount(); i++) {
+            const QString name = QString::fromStdString(midi_in.getPortName(i));
+            drum_devices.append({tr("MIDI: %1").arg(name),
+                                 "midi:" + RemoveDeviceInstanceNumbers(QString(name).remove(
+                                               QRegularExpression(" \\d+$")))});
+        }
+    } catch (const RtMidiError& error) {
+        LOG_ERROR(Config, "Failed to list MIDI inputs: {}", error.getMessage());
+    }
+
+    auto* layout = ui->playersLayout;
+    const QStringList headers = {tr("Controller"), tr("Instrument"), tr("Instrument Device")};
+    for (int column = 0; column < headers.size(); column++) {
+        layout->addWidget(new QLabel(headers[column]), 0, column + 1);
+    }
+    for (size_t player = 0; player < player_widgets.size(); player++) {
+        auto& widgets = player_widgets[player];
+        widgets.controller = new QComboBox;
+        for (const auto& [label, data] : controllers) {
+            widgets.controller->addItem(label, data);
+        }
+        widgets.instrument = new QComboBox;
+        widgets.instrument->addItem(tr("Gamepad"), 0);
+        widgets.instrument->addItem(tr("Guitar"), GuitarInstrument);
+        widgets.instrument->addItem(tr("Drums"), DrumInstrument);
+        widgets.instrument_device = new QComboBox;
+        connect(widgets.instrument, &QComboBox::currentIndexChanged, this,
+                [this, player] { UpdateInstrumentDevices(player); });
+
+        const int row = static_cast<int>(player) + 1;
+        layout->addWidget(new QLabel(tr("Player %1").arg(row)), row, 0);
+        layout->addWidget(widgets.controller, row, 1);
+        layout->addWidget(widgets.instrument, row, 2);
+        layout->addWidget(widgets.instrument_device, row, 3);
+    }
+    for (size_t mic = 0; mic < mic_boxes.size(); mic++) {
+        mic_boxes[mic] = new QComboBox;
+        for (const auto& [label, data] : mics) {
+            mic_boxes[mic]->addItem(label, data);
+        }
+        const int row = static_cast<int>(player_widgets.size() + mic) + 1;
+        layout->addWidget(new QLabel(tr("Mic %1").arg(mic + 1)), row, 0);
+        layout->addWidget(mic_boxes[mic], row, 1);
+    }
+}
+
+void SettingsDialog::UpdateInstrumentDevices(size_t player) {
+    const auto& widgets = player_widgets[player];
+    const int instrument = widgets.instrument->currentData().toInt();
+    widgets.instrument_device->clear();
+    widgets.instrument_device->setEnabled(instrument == GuitarInstrument ||
+                                          instrument == DrumInstrument);
+    if (!widgets.instrument_device->isEnabled()) {
+        return;
+    }
+    for (const auto& [label, data] :
+         instrument == GuitarInstrument ? guitar_devices : drum_devices) {
+        widgets.instrument_device->addItem(label, data);
+    }
+}
+
+// Selects the item holding data, adding one for a saved device that isn't connected.
+void SettingsDialog::SelectItem(QComboBox* box, const QVariant& data) {
+    int index = box->findData(data);
+    if (index == -1 && box->isEnabled() && !data.toString().isEmpty()) {
+        box->addItem(tr("%1 (not connected)").arg(data.toString()), data);
+        index = box->count() - 1;
+    }
+    box->setCurrentIndex(std::max(index, 0));
 }

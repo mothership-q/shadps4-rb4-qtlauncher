@@ -1518,7 +1518,7 @@
          <height>505</height>
         </rect>
        </property>
-       <layout class="QVBoxLayout" name="inputTabVLayout" stretch="0,0">
+       <layout class="QVBoxLayout" name="inputTabVLayout" stretch="0,0,0">
         <item>
          <layout class="QHBoxLayout" name="inputTabHLayout" stretch="0,0">
           <item>
@@ -1771,9 +1771,83 @@
               </layout>
              </widget>
             </item>
+            <item>
+             <widget class="QGroupBox" name="midiDrumsGroupBox">
+              <property name="title">
+               <string>MIDI Drums</string>
+              </property>
+              <layout class="QFormLayout" name="midiDrumsLayout">
+               <item row="0" column="0">
+                <widget class="QLabel" name="midiDrumsPulseLabel">
+                 <property name="text">
+                  <string>Hit Duration</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="0" column="1">
+                <widget class="QSpinBox" name="midiDrumsPulseSpinBox">
+                 <property name="suffix">
+                  <string notr="true"> ms</string>
+                 </property>
+                 <property name="minimum">
+                  <number>1</number>
+                 </property>
+                 <property name="maximum">
+                  <number>100</number>
+                 </property>
+                 <property name="value">
+                  <number>30</number>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="0">
+                <widget class="QLabel" name="midiDrumsMinVelocityLabel">
+                 <property name="text">
+                  <string>Minimum Velocity</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="1" column="1">
+                <widget class="QSpinBox" name="midiDrumsMinVelocitySpinBox">
+                 <property name="minimum">
+                  <number>1</number>
+                 </property>
+                 <property name="maximum">
+                  <number>127</number>
+                 </property>
+                 <property name="value">
+                  <number>10</number>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="0">
+                <widget class="QLabel" name="midiDrumsOverridesLabel">
+                 <property name="text">
+                  <string>Note Overrides</string>
+                 </property>
+                </widget>
+               </item>
+               <item row="2" column="1">
+                <widget class="QLineEdit" name="midiDrumsOverridesLineEdit">
+                 <property name="placeholderText">
+                  <string notr="true">38=Snare,49=Crash</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </widget>
+            </item>
            </layout>
           </item>
          </layout>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="playersGroupBox">
+          <property name="title">
+           <string>Players</string>
+          </property>
+          <layout class="QGridLayout" name="playersLayout"/>
+         </widget>
         </item>
         <item>
          <spacer name="verticalSpacer_8">

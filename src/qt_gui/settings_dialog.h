@@ -3,8 +3,10 @@
 
 #pragma once
 
+#include <array>
 #include <memory>
 #include <span>
+#include <QComboBox>
 #include <QDialog>
 #include <QGroupBox>
 #include <QPushButton>
@@ -52,8 +54,21 @@ private:
     void GetPhysicalDevices();
     void SaveSettings();
     void RefreshAudioDevices();
+    void CreatePlayerWidgets();
+    void UpdateInstrumentDevices(size_t player);
+    void SelectItem(QComboBox* box, const QVariant& data);
 
     void closeEvent(QCloseEvent* event) override;
+
+    struct PlayerWidgets {
+        QComboBox* controller;
+        QComboBox* instrument;
+        QComboBox* instrument_device;
+    };
+    std::array<PlayerWidgets, 4> player_widgets{};
+    std::array<QComboBox*, 3> mic_boxes{};
+    QList<QPair<QString, QString>> guitar_devices;
+    QList<QPair<QString, QString>> drum_devices;
 
     std::map<std::string, int> languages;
     QString defaultTextEdit;
