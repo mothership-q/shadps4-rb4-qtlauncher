@@ -101,10 +101,12 @@ bool MainWindow::Init() {
 
     AddBundledVersion();
     LoadVersionComboBox();
+#ifdef ENABLE_UPDATER
     if (m_gui_settings->GetValue(gui::vm_checkOnStartup).toBool()) {
         auto versionDialog = new VersionDialog(m_gui_settings, this);
         versionDialog->checkUpdatePre(false);
     }
+#endif
 
     auto end = std::chrono::steady_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);

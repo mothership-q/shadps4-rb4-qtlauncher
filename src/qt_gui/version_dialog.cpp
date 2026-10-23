@@ -43,6 +43,12 @@ VersionDialog::VersionDialog(std::shared_ptr<gui_settings> gui_settings, QWidget
     connect(ui->showChangelogCheckBox, &QCheckBox::toggled, this,
             [this](bool checked) { m_gui_settings->SetValue(gui::vm_showChangeLog, checked); });
 
+#ifndef ENABLE_UPDATER
+    ui->checkOnStartupCheckBox->hide();
+    ui->showChangelogCheckBox->hide();
+    ui->updatePreButton->hide();
+#endif
+
     connect(this, &VersionDialog::WindowResized, this, &VersionDialog::HandleResize);
 
     networkManager = new QNetworkAccessManager(this);
