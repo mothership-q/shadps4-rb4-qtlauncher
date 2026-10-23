@@ -1,112 +1,73 @@
-<!--
-SPDX-FileCopyrightText: 2025 shadPS4 Emulator Project
-SPDX-License-Identifier: GPL-2.0-or-later
--->
+# shadPS4 – Rock Band 4 build (unofficial)
 
-<h1 align="center">
-  <br>
-  <a href="https://shadps4.net/"><img src="https://github.com/shadps4-emu/shadPS4-qtlauncher/blob/main/.github/shadps4.png" width="220"></a>
-  <br>
-  <b>QtLauncher</b>
-  <br>
-</h1>
+A shadPS4 build made for **Rock Band 4 (CUSA02084, update 2.21)** with **Rock Band 4 Deluxe**. Not affiliated with the shadPS4 project. Please report problems here, not upstream.
 
-<h1 align="center">
- <a href="https://discord.gg/bFJxfftGW6">
-        <img src="https://img.shields.io/discord/1080089157554155590?color=5865F2&label=shadPS4%20Discord&logo=Discord&logoColor=white" width="275">
- <a href="https://github.com/shadps4-emu/shadPS4-qtlauncher/releases/latest">
-        <img src="https://img.shields.io/github/downloads/shadps4-emu/shadPS4-qtlauncher/total.svg" width="140">
- <a href="https://shadps4.net/">
-        <img src="https://img.shields.io/badge/shadPS4-website-8A2BE2" width="150">
- <a href="https://x.com/shadps4">
-        <img src="https://img.shields.io/badge/-Join%20us-black?logo=X&logoColor=white" width="100">
- <a href="https://github.com/shadps4-emu/shadPS4-qtlauncher/stargazers">
-        <img src="https://img.shields.io/github/stars/shadps4-emu/shadPS4-qtlauncher" width="120">
-</h1>
+This repository is the **launcher** (branch `midi-drums`). The emulator is in [mothership-q/shadPS4-rb4](https://github.com/mothership-q/shadPS4-rb4) (branch `rb4dx`).
 
+**[Download the latest release](https://github.com/mothership-q/shadps4-rb4-qtlauncher/releases)**. It contains both the launcher and the emulator.
 
-# General information
+## What's new
 
-**QtLauncher** is the official launcher for [shadPS4](https://github.com/shadps4-emu/shadPS4). It was separated from the main repository and is now in development here.
+- **NVIDIA crash fix**. Shaders and textures appear correctly now on NVIDIA cards (no more "device lost", upstream issue [#3780](https://github.com/shadps4-emu/shadPS4/issues/3780)).
+- **Real instruments, per player.** Up to 4 players, each with their own controller and instrument:
+  - MIDI drum kits
+  - Xbox 360 guitars and drums
+  - PS3, Wii, PS4 and PS5 instrument dongles, and Santroller in HID mode
+- **Up to 3 mics for harmonies.** Mics that don't belong to a player get their own profile.
+- **Performance improvements.** Near double performance thanks to CPU optimizations. For 120 fps, set **Settings → Experimental → Vblank Frequency** to 120.
 
+## Install
 
-# Building
+1. Download the latest zip from [Releases](https://github.com/mothership-q/shadps4-rb4-qtlauncher/releases), unzip it anywhere and run `shadPS4QtLauncher.exe`. Keep the `emulator` folder next to it: the launcher finds the emulator there and selects it automatically.
+2. Add the folder that contains your Rock Band 4 dump, with update 2.21 installed.
+3. Download [Rock Band 4 Deluxe](https://rb4dx.milohax.org/index.html) and copy its files into the shadPS4 user folder. This is `%APPDATA%\shadPS4`, or the `user` folder next to the launcher in a portable setup.
 
-> [!IMPORTANT]
-> If you want to use this launcher, you don't have to follow the build instructions, you can simply download the launcher from the [**release tab**](https://github.com/shadps4-emu/shadPS4-qtlauncher/releases).
+| File | Where it goes |
+|---|---|
+| `RB4DX-Plugin.prx` | `custom_modules\CUSA02084\` |
+| `GoldHEN` folder | `data\GoldHEN\` |
 
-## Windows
+### Coming from an older RB4 build (LlysiX)? The folders changed
 
-Check the build instructions for [**Windows**](https://github.com/shadps4-emu/shadPS4-qtlauncher/blob/main/documents/building-windows.md).
+| | Old build | This build |
+|---|---|---|
+| Plugin | `<game>\sce_module\RB4DX-Plugin.prx` | `<user>\custom_modules\CUSA02084\RB4DX-Plugin.prx` |
+| Mod data | `<user>\data\CUSA02084\GoldHEN\` | `<user>\data\GoldHEN\` |
 
-## Linux
+_The plugin and mod data locations were changed in the main shadPS4 repo._
 
-Check the build instructions for [**Linux**](https://github.com/shadps4-emu/shadPS4-qtlauncher/blob/main/documents/building-linux.md).
+## Set up controllers
 
-## macOS
+Right click on Rock Band 4 and **Game-specific Settings → Configure Game-specific Settings → Input → Players**: one row per player.
 
-Check the build instructions for [**macOS**](https://github.com/shadps4-emu/shadPS4-qtlauncher/blob/main/documents/building-macos.md).
+- **Controller**: the pad that player uses, or *Automatic* to assign pads in connection order.
+- **Instrument**: Gamepad, Guitar or Drums.
+- **Instrument Device**: a MIDI kit, a dongle or a USB instrument. Leave it on *This Controller* for Xbox 360 instruments. When an instrument device is set, the player doesn't need a pad.
+- **Mic 1–3**: the inputs used for singing. They're handed out to players in order, starting with players who have no instrument.
 
-# Keyboard and Mouse Mappings
+**MIDI Drums**: Raise *Minimum Velocity* if you get ghost notes. Use *Note Overrides* if your kit uses unusual notes, for example `38=Snare,48=HiTom`. *Hit Duration* is how long each drum pad hit is held for. Don't mess with this unless you know exactly what you're doing.
 
-> [!NOTE]
-> Some keyboards may also require you to hold the Fn key to use the F\* keys. Mac users should use the Command key instead of Control, and need to use Command+F11 for full screen to avoid conflicting with system key bindings.
+## Building
 
-| Button | Function |
-|-------------|-------------|
-F10 | FPS Counter
-Ctrl+F10 | Video Debug Info
-F11 | Fullscreen
-F12 | Trigger RenderDoc Capture
+You only need this if you want to build the launcher yourself. Follow the upstream instructions for [Windows](documents/building-windows.md), [Linux](documents/building-linux.md) or [macOS](documents/building-macos.md), but clone this fork's branch. `--recursive` is needed for the RtMidi submodule used by MIDI drum kits:
 
-> [!NOTE]
-> Xbox and DualShock controllers work out of the box.
+```
+git clone --recursive -b midi-drums https://github.com/mothership-q/shadps4-rb4-qtlauncher.git
+```
 
-| Controller button | Keyboard equivalent |
-|-------------|-------------|
-LEFT AXIS UP | W |
-LEFT AXIS DOWN | S |
-LEFT AXIS LEFT | A |
-LEFT AXIS RIGHT | D |
-RIGHT AXIS UP | I |
-RIGHT AXIS DOWN | K |
-RIGHT AXIS LEFT | J |
-RIGHT AXIS RIGHT | L |
-TRIANGLE | Numpad 8 or C |
-CIRCLE | Numpad 6 or B |
-CROSS | Numpad 2 or N |
-SQUARE | Numpad 4 or V |
-PAD UP | UP |
-PAD DOWN | DOWN |
-PAD LEFT | LEFT |
-PAD RIGHT | RIGHT |
-OPTIONS | RETURN |
-BACK BUTTON / TOUCH PAD | SPACE |
-L1 | Q |
-R1 | U |
-L2 | E |
-R2 | O |
-L3 | X |
-R3 | M |
+The launcher doesn't contain the emulator. Build it from [mothership-q/shadPS4-rb4](https://github.com/mothership-q/shadPS4-rb4/tree/rb4dx) (branch `rb4dx`) and put `shadPS4.exe` in an `emulator` folder next to `shadPS4QtLauncher.exe`. The release zip uses this layout:
 
-Keyboard and mouse inputs can be customized in the settings menu by clicking the Controller button, and further details and help on controls are  also found there. Custom bindings are saved per-game. Inputs support up to three keys per binding, mouse buttons, mouse movement mapped to joystick input, and more.
+```
+shadPS4QtLauncher.exe   + Qt DLLs (from windeployqt)
+emulator\
+    shadPS4.exe
+```
 
-Logo is done by [**Xphalnos**](https://github.com/Xphalnos)
+Builds of this fork don't check for updates, so they never replace themselves or the emulator with official builds. The Version Manager can still download official emulator builds, but those don't have the RB4 changes.
 
-# Contributing
+## Source
 
-If you want to contribute, please read the [**CONTRIBUTING.md**](https://github.com/shadps4-emu/shadPS4-qtlauncher/blob/main/CONTRIBUTING.md) file.\
-Open a PR and we'll check it :)
+GPL-2.0, like shadPS4. Based on [shadPS4](https://github.com/shadps4-emu/shadPS4) and the [shadPS4 Qt launcher](https://github.com/shadps4-emu/shadps4-qtlauncher).
 
-# Translations
-
-If you want to translate shadPS4 to your language we use [**Crowdin**](https://crowdin.com/project/shadps4-emulator).
-# Contributors
-
-<a href="https://github.com/shadps4-emu/shadPS4-qtlauncher/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=shadps4-emu/shadPS4-qtlauncher&max=24">
-</a>
-
-# License
-
-- [**GPL-2.0 license**](https://github.com/shadps4-emu/shadPS4-qtlauncher/blob/main/LICENSE)
+- Emulator: [mothership-q/shadPS4-rb4](https://github.com/mothership-q/shadPS4-rb4/tree/rb4dx) branch `rb4dx`
+- Launcher: [mothership-q/shadps4-rb4-qtlauncher](https://github.com/mothership-q/shadps4-rb4-qtlauncher/tree/midi-drums) branch `midi-drums` (this repository)
