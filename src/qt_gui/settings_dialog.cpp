@@ -570,6 +570,7 @@ SettingsDialog::SettingsDialog(std::shared_ptr<gui_settings> gui_settings,
         ui->motionControlsCheckBox->installEventFilter(this);
         ui->micComboBox->installEventFilter(this);
         ui->usbComboBox->installEventFilter(this);
+        ui->usbListCacheSpinBox->installEventFilter(this);
         ui->playersGroupBox->installEventFilter(this);
         ui->midiDrumsGroupBox->installEventFilter(this);
 
@@ -628,6 +629,7 @@ SettingsDialog::SettingsDialog(std::shared_ptr<gui_settings> gui_settings,
         ui->readbackLinearImagesCheckBox->installEventFilter(this);
         ui->dumpShadersCheckBox->installEventFilter(this);
         ui->dmaCheckBox->installEventFilter(this);
+        ui->gpuWaitSleepCheckBox->installEventFilter(this);
         ui->devkitCheckBox->installEventFilter(this);
         ui->neoCheckBox->installEventFilter(this);
         ui->networkConnectedCheckBox->installEventFilter(this);
@@ -809,6 +811,7 @@ void SettingsDialog::LoadValuesFromConfig() {
     ui->motionControlsCheckBox->setChecked(EmulatorSettings.IsMotionControlsEnabled());
     ui->backgroundControllerCheckBox->setChecked(EmulatorSettings.IsBackgroundControllerInput());
     ui->usbComboBox->setCurrentIndex(EmulatorSettings.GetUsbDeviceBackend());
+    ui->usbListCacheSpinBox->setValue(EmulatorSettings.GetUsbDeviceListCacheMs());
     ui->cameraComboBox->setCurrentIndex(EmulatorSettings.GetCameraId() + 1);
 
     const auto players = EmulatorSettings.GetPlayers();
@@ -889,6 +892,7 @@ void SettingsDialog::LoadValuesFromConfig() {
     ui->readbacksModeComboBox->setCurrentIndex(EmulatorSettings.GetReadbacksMode());
     ui->readbackLinearImagesCheckBox->setChecked(EmulatorSettings.IsReadbackLinearImagesEnabled());
     ui->dmaCheckBox->setChecked(EmulatorSettings.IsDirectMemoryAccessEnabled());
+    ui->gpuWaitSleepCheckBox->setChecked(EmulatorSettings.IsSleepInGpuWaits());
     ui->neoCheckBox->setChecked(EmulatorSettings.IsNeo());
     ui->devkitCheckBox->setChecked(EmulatorSettings.IsDevKit());
 
@@ -1139,6 +1143,8 @@ void SettingsDialog::updateNoteTextEdit(const QString& elementName) {
         text = tr("Enable Motion Controls:\\nWhen enabled it will use the controller's motion control if supported.");
     } else if (elementName == "usbComboBox") {
         text = tr("USB Device:\\nReal USB Device: Use a real USB Device attached to the system.\\nSkylander Portal: Emulate a Skylander Portal of Power.\\nInfinity Base: Emulate a Disney Infinity Base.\\nDimensions Toypad: Emulate a Lego Dimensions Toypad.");
+    } else if (elementName == "usbListCacheSpinBox") {
+        text = tr("Device List Cache:\\nHow long the list of real USB devices is reused before it is read again. Reading it takes several milliseconds on Windows, and some games, such as Rock Band 4, read it many times a second. Newly plugged in devices show up after at most this long. Off reads it every time.");
     } else if (elementName == "playersGroupBox") {
         text = tr("Players:\\nController: The controller each player uses, or Automatic to assign them in connection order.\\nInstrument: What the player is to the game. Guitars and drums are read from their instrument device, or from the controller itself, such as Xbox 360 instruments.\\nInstrument Device: A MIDI drum kit, a USB instrument or an instrument dongle (PS3, Wii, PS4, PS5, Santroller). The controller then only navigates menus. Drums read from the controller need the Rock Band or Guitar Hero layout of the kit.\\nMic 1, Mic 2, Mic 3: The microphones the game uses for singing and harmonies, whoever sings. They are handed to the players in order, those without an instrument first. Like on the console, each microphone needs its own user, so when there are more microphones than players, users without a controller are logged in to hold them.");
     } else if (elementName == "midiDrumsGroupBox") {
@@ -1148,6 +1154,8 @@ void SettingsDialog::updateNoteTextEdit(const QString& elementName) {
     // Experimental
     if (elementName == "dmaCheckBox") {
         text = tr("Enable Direct Memory Access:\\nEnables arbitrary memory access from the GPU to CPU memory.");
+    } else if (elementName == "gpuWaitSleepCheckBox") {
+        text = tr("Sleep in GPU Waits:\\nWhen the GPU waits for memory the game writes and has nothing else to do, check it about every half millisecond instead of continuously. Saves a whole CPU core in games that make the GPU wait for every frame, such as Rock Band 4.");
     } else if (elementName == "neoCheckBox") {
         text = tr("Enable PS4 Neo Mode:\\nAdds support for PS4 Pro emulation and memory size. Currently causes instability in a large number of tested games.");
     } else if (elementName == "devkitCheckBox") {
@@ -1256,6 +1264,7 @@ void SettingsDialog::UpdateSettings(bool is_specific) {
     EmulatorSettings.SetCursorState(ui->hideCursorComboBox->currentIndex(), is_specific);
     EmulatorSettings.SetCursorHideTimeout(ui->idleTimeoutSpinBox->value(), is_specific);
     EmulatorSettings.SetUsbDeviceBackend(ui->usbComboBox->currentIndex(), is_specific);
+    EmulatorSettings.SetUsbDeviceListCacheMs(ui->usbListCacheSpinBox->value(), is_specific);
     EmulatorSettings.SetCameraId(ui->cameraComboBox->currentIndex() - 1, is_specific);
     std::vector<PlayerInput> players;
     for (const auto& widgets : player_widgets) {
@@ -1327,6 +1336,7 @@ void SettingsDialog::UpdateSettings(bool is_specific) {
     EmulatorSettings.SetReadbackLinearImagesEnabled(ui->readbackLinearImagesCheckBox->isChecked(),
                                                     is_specific);
     EmulatorSettings.SetDirectMemoryAccessEnabled(ui->dmaCheckBox->isChecked(), is_specific);
+    EmulatorSettings.SetSleepInGpuWaits(ui->gpuWaitSleepCheckBox->isChecked(), is_specific);
     EmulatorSettings.SetDevKit(ui->devkitCheckBox->isChecked(), is_specific);
     EmulatorSettings.SetNeo(ui->neoCheckBox->isChecked(), is_specific);
     EmulatorSettings.SetPipelineCacheEnabled(ui->shaderCacheCheckBox->isChecked(), is_specific);

@@ -1765,6 +1765,32 @@
                   <item>
                    <widget class="QComboBox" name="usbComboBox"/>
                   </item>
+                  <item>
+                   <widget class="QLabel" name="usbListCacheLabel">
+                    <property name="text">
+                     <string>Device List Cache</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QSpinBox" name="usbListCacheSpinBox">
+                    <property name="specialValueText">
+                     <string>Off</string>
+                    </property>
+                    <property name="suffix">
+                     <string notr="true"> ms</string>
+                    </property>
+                    <property name="maximum">
+                     <number>10000</number>
+                    </property>
+                    <property name="singleStep">
+                     <number>100</number>
+                    </property>
+                    <property name="value">
+                     <number>1000</number>
+                    </property>
+                   </widget>
+                  </item>
                  </layout>
                 </widget>
                </item>
@@ -2729,6 +2755,13 @@
                 <widget class="QCheckBox" name="dmaCheckBox">
                  <property name="text">
                   <string>Enable Direct Memory Access</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QCheckBox" name="gpuWaitSleepCheckBox">
+                 <property name="text">
+                  <string>Sleep in GPU Waits</string>
                  </property>
                 </widget>
                </item>
