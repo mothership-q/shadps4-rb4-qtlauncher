@@ -72,6 +72,7 @@ private:
     void onGameClosed();
     void RunGame();
     void PrintLog(QString entry, QColor textColor);
+    void AddBundledVersion();
 
 #ifdef ENABLE_UPDATER
     void CheckUpdateMain(bool checkSave);

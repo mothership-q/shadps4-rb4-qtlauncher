@@ -99,6 +99,7 @@ bool MainWindow::Init() {
     CheckUpdateMain(true);
 #endif
 
+    AddBundledVersion();
     LoadVersionComboBox();
     if (m_gui_settings->GetValue(gui::vm_checkOnStartup).toBool()) {
         auto versionDialog = new VersionDialog(m_gui_settings, this);
@@ -1603,6 +1604,31 @@ void MainWindow::RestartEmulator() {
     QString workDir = fileInfo.absolutePath();
 
     m_ipc_client->startEmulator(fileInfo, args, workDir);
+}
+
+void MainWindow::AddBundledVersion() {
+    const QString exe = m_gui_settings->GetBundledExecutablePath();
+    if (!QFileInfo::exists(exe)) {
+        return;
+    }
+
+    const auto versions = VersionManager::GetVersionList();
+    const bool registered = std::any_of(versions.cbegin(), versions.cend(),
+                                        [&](const auto& v) { return v.path == exe.toStdString(); });
+    if (!registered) {
+        VersionManager::AddNewVersion({
+            .name = tr("Bundled").toStdString(),
+            .path = exe.toStdString(),
+            .date = QDateTime::currentDateTime().toString("yyyy-MM-dd").toStdString(),
+            .codename = tr("Local").toStdString(),
+            .type = VersionManager::VersionType::Custom,
+        });
+    }
+
+    const QString selected = m_gui_settings->GetValue(gui::vm_versionSelected).toString();
+    if (!registered || !QFileInfo::exists(selected)) {
+        m_gui_settings->SetValue(gui::vm_versionSelected, exe);
+    }
 }
 
 void MainWindow::LoadVersionComboBox() {

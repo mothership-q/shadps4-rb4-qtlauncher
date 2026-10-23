@@ -84,4 +84,5 @@ public:
     ~gui_settings() override = default;
 
     QString GetVersionExecutablePath(const QString& versionName) const;
+    QString GetBundledExecutablePath() const;
 };
